@@ -47,6 +47,26 @@ class AuthService {
     }
   }
 
+  // Iniciar sesión con callback para configuración biométrica
+  static Future<AuthResponse> signInWithBiometricSetup({
+    required String email,
+    required String password,
+    Function(String email, String password)? onFirstLogin,
+  }) async {
+    try {
+      final response = await signIn(email: email, password: password);
+      
+      // Si el login fue exitoso y hay callback, ejecutarlo
+      if (response.user != null && onFirstLogin != null) {
+        onFirstLogin(email, password);
+      }
+      
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Cerrar sesión
   static Future<void> signOut() async {
     try {

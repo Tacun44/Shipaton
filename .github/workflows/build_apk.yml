@@ -1,0 +1,85 @@
+name: 📱 Build Android APK
+
+on:
+  workflow_dispatch: # Permite ejecutar manualmente
+    inputs:
+      build_type:
+        description: 'Tipo de build'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-apk:
+    name: 🔨 Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ☕ Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+        cache: true
+        
+    - name: 📦 Get Flutter dependencies
+      run: flutter pub get
+      
+    - name: 🔍 Analyze code
+      run: flutter analyze
+      
+    - name: 🧪 Run tests
+      run: flutter test --no-pub --coverage
+      
+    - name: 🔨 Build debug APK
+      if: github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == ''
+      run: |
+        flutter build apk --debug --verbose
+        echo "✅ Debug APK generado exitosamente"
+        
+    - name: 🚀 Build release APK
+      if: github.event.inputs.build_type == 'release'
+      run: |
+        flutter build apk --release --verbose
+        echo "✅ Release APK generado exitosamente"
+        
+    - name: 📁 List APK files
+      run: |
+        echo "📱 APKs generados:"
+        find build/app/outputs/flutter-apk/ -name "*.apk" -exec ls -lh {} \;
+        
+    - name: 📤 Upload Debug APK
+      if: github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: 🐛 Shipaton-Debug-APK
+        path: build/app/outputs/flutter-apk/app-debug.apk
+        retention-days: 30
+        
+    - name: 📤 Upload Release APK
+      if: github.event.inputs.build_type == 'release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: 🚀 Shipaton-Release-APK
+        path: build/app/outputs/flutter-apk/app-release.apk
+        retention-days: 90
+        
+    - name: 📊 APK Info
+      run: |
+        echo "🎉 ¡APK generado exitosamente!"
+        echo "📥 Descarga el APK desde la pestaña 'Actions' → 'Artifacts'"
+        echo "📱 Instala en tu dispositivo Android para probar la huella dactilar"

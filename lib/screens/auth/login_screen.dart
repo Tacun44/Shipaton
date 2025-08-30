@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import 'register_screen.dart';
+import 'biometric_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,12 +18,81 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  
+  // Variables para biometría
+  bool _isBiometricAvailable = false;
+  bool _isBiometricEnabled = false;
+  String _biometricTypeName = 'Biometría';
+  String? _savedEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBiometric();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initBiometric() async {
+    try {
+      final isAvailable = await BiometricService.isBiometricAvailable();
+      final isEnabled = await BiometricService.isBiometricEnabled();
+      final savedEmail = await BiometricService.getSavedEmail();
+      final typeName = await BiometricService.getBiometricTypeName();
+
+      setState(() {
+        _isBiometricAvailable = isAvailable;
+        _isBiometricEnabled = isEnabled;
+        _savedEmail = savedEmail;
+        _biometricTypeName = typeName;
+      });
+
+      // Si hay email guardado, pre-llenarlo
+      if (savedEmail != null) {
+        _emailController.text = savedEmail;
+      }
+    } catch (e) {
+      debugPrint('Error inicializando biometría: $e');
+    }
+  }
+
+  Future<void> _signInWithBiometric() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success = await BiometricService.signInWithBiometric();
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡Bienvenido de vuelta con $_biometricTypeName!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error biométrico: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _signIn() async {
@@ -32,19 +103,22 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await AuthService.signIn(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      
+      await AuthService.signIn(email: email, password: password);
       
       if (mounted) {
-        // La navegación se manejará automáticamente por el AuthWrapper
+        // Mostrar mensaje de bienvenida
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('¡Bienvenido!'),
             backgroundColor: Colors.green,
           ),
         );
+
+        // Verificar si debe mostrar configuración biométrica
+        await _checkAndShowBiometricSetup(email, password);
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -70,6 +144,37 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _checkAndShowBiometricSetup(String email, String password) async {
+    try {
+      // Solo mostrar si la biometría está disponible pero no configurada
+      final isAvailable = await BiometricService.isBiometricAvailable();
+      final isEnabled = await BiometricService.isBiometricEnabled();
+      
+      if (isAvailable && !isEnabled && mounted) {
+        // Esperar un poco para que se complete la navegación del AuthWrapper
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          final result = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (context) => BiometricSetupScreen(
+                email: email,
+                password: password,
+              ),
+            ),
+          );
+          
+          if (result == true) {
+            // Biometría configurada, actualizar estado
+            await _initBiometric();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error verificando configuración biométrica: $e');
     }
   }
 
@@ -240,6 +345,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 
+                // Botón de autenticación biométrica (si está disponible)
+                if (_isBiometricAvailable && _isBiometricEnabled) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _signInWithBiometric,
+                      icon: Icon(_getBiometricIcon()),
+                      label: Text('Usar $_biometricTypeName'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Theme.of(context).primaryColor),
+                      ),
+                    ),
+                  ),
+                ],
+                
                 const SizedBox(height: 24),
                 
                 // Divider
@@ -291,5 +415,15 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  IconData _getBiometricIcon() {
+    if (_biometricTypeName.contains('Face')) {
+      return Icons.face;
+    } else if (_biometricTypeName.contains('Huella')) {
+      return Icons.fingerprint;
+    } else {
+      return Icons.security;
+    }
   }
 }
