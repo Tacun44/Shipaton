@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'config/supabase_config.dart';
 import 'services/database_service.dart';
+import 'services/revenuecat_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'constants/mueve_colors.dart';
 
@@ -9,6 +10,9 @@ void main() async {
   
   // Inicializar Supabase
   await SupabaseConfig.initialize();
+  
+  // Inicializar RevenueCat
+  await RevenueCatService.initRC();
   
   runApp(const MyApp());
 }

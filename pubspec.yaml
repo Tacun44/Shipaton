@@ -46,6 +46,10 @@ dependencies:
   
   # Animaciones avanzadas
   lottie: ^3.2.0
+  
+  # RevenueCat para pagos
+  purchases_flutter: ^8.1.0
+  purchases_ui_flutter: ^8.1.0
 
 dev_dependencies:
   flutter_test:
