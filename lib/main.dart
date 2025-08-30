@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'config/supabase_config.dart';
 import 'services/database_service.dart';
+import 'screens/home_screen.dart';
+import 'constants/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,12 +20,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Shipaton - Flutter & Supabase',
+      title: 'Mueve - Tu dinero en movimiento',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.darkNavy),
         useMaterial3: true,
+        fontFamily: 'SF Pro Display',
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: AppColors.lightGray,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.darkNavy,
+          foregroundColor: AppColors.pureWhite,
+          elevation: 0,
+        ),
       ),
-      home: const MyHomePage(title: 'Shipaton App'),
+      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
