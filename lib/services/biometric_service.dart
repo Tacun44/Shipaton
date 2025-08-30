@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
@@ -16,6 +17,9 @@ class BiometricService {
   /// Verificar si el dispositivo soporta biometría
   static Future<bool> isDeviceSupported() async {
     try {
+      // En web, la biometría no está soportada
+      if (kIsWeb) return false;
+      
       return await _localAuth.isDeviceSupported();
     } catch (e) {
       debugPrint('Error verificando soporte biométrico: $e');
@@ -40,6 +44,9 @@ class BiometricService {
   /// Obtener tipos de biometría disponibles
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
+      // En web, no hay biometría disponible
+      if (kIsWeb) return [];
+      
       return await _localAuth.getAvailableBiometrics();
     } catch (e) {
       debugPrint('Error obteniendo tipos biométricos: $e');
