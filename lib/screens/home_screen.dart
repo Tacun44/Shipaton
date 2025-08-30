@@ -3,6 +3,7 @@ import '../models/cuenta_model.dart';
 import '../services/financial_service.dart';
 import '../widgets/floating_action_menu.dart';
 import 'account_screen.dart';
+import 'qr_screen.dart';
 import '../constants/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -133,40 +134,158 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+        return Scaffold(
       backgroundColor: AppColors.lightGray, // Fondo gris claro para diferenciar
       body: SafeArea(
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator(color: AppColors.darkNavy))
-            : Column(
-                children: [
-                  // Header con saldo (fondo diferenciado)
+        child: Stack(
+          children: [
+            // Contenido principal
+            _cargando
+                ? const Center(child: CircularProgressIndicator(color: AppColors.darkNavy))
+                : Column(
+                    children: [
+                                        // Header con saldo (fondo diferenciado)
                   _buildHeaderConSaldo(),
                   
+                  // Accesos rápidos dinámicos
+                  _buildAccesosRapidos(),
+
                   // Últimos movimientos (historial con scroll)
                   Expanded(
                     child: _buildUltimosMovimientos(),
                   ),
-                ],
-              ),
-      ),
-      floatingActionButton: FloatingActionMenu(
-        onMiCuentaTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AccountScreen(cuenta: _cuenta),
+                    ],
+                  ),
+            
+            // Menú flotante integrado
+            FloatingActionMenu(
+              onMiCuentaTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AccountScreen(cuenta: _cuenta),
+                  ),
+                );
+              },
+              onQRTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => QRScreen(cuenta: _cuenta),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeaderConSaldo() {
+  Widget _buildAccesosRapidos() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildAccesoRapido(
+              'Transferir',
+              Icons.send_rounded,
+              AppColors.skyBlue,
+              () => _mostrarProximamente('Transferencias'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildAccesoRapido(
+              'QR Pago',
+              Icons.qr_code_rounded,
+              AppColors.purple,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => QRScreen(cuenta: _cuenta),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildAccesoRapido(
+              'Pagar',
+              Icons.payment_rounded,
+              AppColors.accentOrange,
+              () => _mostrarProximamente('Pagos'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccesoRapido(String titulo, IconData icono, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.pureWhite,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icono,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              titulo,
+              style: TextStyle(
+                color: AppColors.primaryText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarProximamente(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature - Próximamente'),
+        backgroundColor: AppColors.darkNavy,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+    Widget _buildHeaderConSaldo() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(20.0), // Reducido de 24 a 20
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
       ),
@@ -184,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Mueve',
                     style: TextStyle(
                       color: AppColors.pureWhite,
-                      fontSize: 28,
+                      fontSize: 24, // Reducido de 28 a 24
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -192,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Hola, ${_cuenta?.nombreUsuario.split(' ').first ?? 'Usuario'}',
                     style: const TextStyle(
                       color: AppColors.pureWhite,
-                      fontSize: 16,
+                      fontSize: 14, // Reducido de 16 a 14
                       fontWeight: FontWeight.w300,
                     ),
                   ),
@@ -200,8 +319,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          
-          const SizedBox(height: 32),
+
+          const SizedBox(height: 20), // Reducido de 32 a 20
           
           // Saldo principal con ojito y botón de recarga
           Row(
@@ -228,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               : '••••••••',
                           style: const TextStyle(
                             color: AppColors.pureWhite,
-                            fontSize: 36,
+                            fontSize: 28, // Reducido de 36 a 28
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -261,23 +380,26 @@ class _HomeScreenState extends State<HomeScreen> {
               
               // Botón de recarga
               Container(
+                width: 44, // Tamaño fijo más pequeño
+                height: 44,
                 decoration: BoxDecoration(
                   gradient: AppColors.accentGradient,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12), // Menos redondeado
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.accentOrange.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: 8, // Reducido
+                      offset: const Offset(0, 3), // Reducido
                     ),
                   ],
                 ),
                 child: IconButton(
                   onPressed: _recargarFondos,
+                  padding: EdgeInsets.zero, // Sin padding extra
                   icon: const Icon(
                     Icons.add_rounded,
                     color: AppColors.pureWhite,
-                    size: 28,
+                    size: 20, // Reducido de 28 a 20
                   ),
                   tooltip: 'Recargar fondos',
                 ),
@@ -301,16 +423,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildUltimosMovimientos() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 80), // Sin margen superior
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.pureWhite,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
+          topLeft: Radius.circular(24), // Más redondeado
           topRight: Radius.circular(24),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: AppColors.darkNavy.withOpacity(0.1),
             blurRadius: 15,
             offset: const Offset(0, -5),
           ),
@@ -321,128 +443,121 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Header del historial
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12), // Reducido
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Historial de movimientos',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 18, // Reducido de 20 a 18
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C3E50),
+                    color: AppColors.primaryText,
                   ),
                 ),
                 Icon(
-                  Icons.history,
-                  color: Colors.grey[600],
+                  Icons.history_rounded,
+                  color: AppColors.lightText,
+                  size: 20, // Reducido
                 ),
               ],
             ),
           ),
           
-          // Lista scrolleable de movimientos
-          SizedBox(
-            height: 400, // Altura fija para el scroll
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: [
-                _buildMovimientoItemAnimated('Salario mensual', 12000.00, Icons.work, Colors.green, 'Hace 2 días'),
-                _buildMovimientoItemAnimated('Compra supermercado', -450.30, Icons.shopping_cart, Colors.red, 'Hace 1 día'),
-                _buildMovimientoItemAnimated('Pago Netflix', -49.90, Icons.movie, Colors.red, 'Hace 1 día'),
-                _buildMovimientoItemAnimated('Transferencia recibida', 500.00, Icons.send, Colors.green, 'Hoy'),
-                _buildMovimientoItemAnimated('Pago luz', -180.75, Icons.electrical_services, Colors.red, 'Hoy'),
-                _buildMovimientoItemAnimated('Recarga de fondos', 1000.00, Icons.add_circle, Colors.blue, 'Hoy'),
-                _buildMovimientoItemAnimated('Compra gasolina', -250.00, Icons.local_gas_station, Colors.red, 'Ayer'),
-                _buildMovimientoItemAnimated('Pago internet', -89.90, Icons.wifi, Colors.red, 'Hace 3 días'),
-                _buildMovimientoItemAnimated('Transferencia enviada', -300.00, Icons.send, Colors.orange, 'Hace 3 días'),
-                _buildMovimientoItemAnimated('Depósito bancario', 2500.00, Icons.account_balance, Colors.green, 'Hace 1 semana'),
+                                // Lista scrolleable de movimientos
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16), // Reducido de 24 a 16
+                          children: [
+                _buildMovimientoItemAnimado('Salario mensual', 12000.00, Icons.work_rounded, AppColors.success, 'Hace 2 días'),
+                _buildMovimientoItemAnimado('Compra supermercado', -450.30, Icons.shopping_cart_rounded, AppColors.error, 'Hace 1 día'),
+                _buildMovimientoItemAnimado('Pago Netflix', -49.90, Icons.movie_rounded, AppColors.error, 'Hace 1 día'),
+                _buildMovimientoItemAnimado('Transferencia recibida', 500.00, Icons.send_rounded, AppColors.success, 'Hoy'),
+                _buildMovimientoItemAnimado('Pago luz', -180.75, Icons.electrical_services_rounded, AppColors.error, 'Hoy'),
+                _buildMovimientoItemAnimado('Recarga de fondos', 1000.00, Icons.add_circle_rounded, AppColors.skyBlue, 'Hoy'),
+                _buildMovimientoItemAnimado('Compra gasolina', -250.00, Icons.local_gas_station_rounded, AppColors.error, 'Ayer'),
+                _buildMovimientoItemAnimado('Pago internet', -89.90, Icons.wifi_rounded, AppColors.error, 'Hace 3 días'),
+                _buildMovimientoItemAnimado('Transferencia enviada', -300.00, Icons.send_rounded, AppColors.warning, 'Hace 3 días'),
+                _buildMovimientoItemAnimado('Depósito bancario', 2500.00, Icons.account_balance_rounded, AppColors.success, 'Hace 1 semana'),
               ],
             ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 12), // Reducido de 20 a 12
         ],
       ),
     );
   }
 
-  Widget _buildMovimientoItemAnimated(String descripcion, double monto, IconData icon, Color color, String fecha) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.transparent),
-        ),
-        child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Detalles de: $descripcion'),
-                backgroundColor: const Color(0xFF2C3E50),
+  Widget _buildMovimientoItemAnimado(String descripcion, double monto, IconData icon, Color color, String fecha) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3), // Reducido de 4 a 3
+      padding: const EdgeInsets.all(12), // Reducido de 16 a 12
+      decoration: BoxDecoration(
+        color: AppColors.lightGray,
+        borderRadius: BorderRadius.circular(10), // Reducido de 12 a 10
+        border: Border.all(color: Colors.transparent),
+      ),
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Detalles de: $descripcion'),
+              backgroundColor: AppColors.darkNavy,
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8), // Reducido de 12 a 8
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8), // Reducido
               ),
-            );
-          },
-          onHover: (isHovering) {
-            // La animación se maneja automáticamente por InkWell
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      descripcion,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: Color(0xFF2C3E50),
-                      ),
+              child: Icon(icon, color: color, size: 20), // Reducido de 24 a 20
+            ),
+            const SizedBox(width: 12), // Reducido de 16 a 12
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    descripcion,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14, // Reducido de 15 a 14
+                      color: AppColors.primaryText,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      fecha,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: monto >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${monto >= 0 ? '+' : ''}\$${monto.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: monto >= 0 ? Colors.green[700] : Colors.red[700],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
                   ),
+                  const SizedBox(height: 2), // Reducido de 4 a 2
+                  Text(
+                    fecha,
+                    style: TextStyle(
+                      color: AppColors.lightText,
+                      fontSize: 12, // Reducido de 13 a 12
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), // Reducido
+              decoration: BoxDecoration(
+                color: monto >= 0 ? AppColors.success.withOpacity(0.1) : AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16), // Reducido de 20 a 16
+              ),
+              child: Text(
+                '${monto >= 0 ? '+' : ''}\$${monto.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: monto >= 0 ? AppColors.success : AppColors.error,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13, // Reducido de 15 a 13
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

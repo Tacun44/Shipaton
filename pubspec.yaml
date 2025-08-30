@@ -37,6 +37,15 @@ dependencies:
   
   # Almacenamiento seguro
   flutter_secure_storage: ^9.2.4
+  
+  # QR Code (offline)
+  qr_flutter: ^4.1.0
+  
+  # UUID para generar IDs únicos
+  uuid: ^4.5.1
+  
+  # Animaciones avanzadas
+  lottie: ^3.2.0
 
 dev_dependencies:
   flutter_test:
