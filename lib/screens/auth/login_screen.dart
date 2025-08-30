@@ -23,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
   String _biometricTypeName = 'Biometría';
-  String? _savedEmail;
 
   @override
   void initState() {
@@ -48,7 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isBiometricAvailable = isAvailable;
         _isBiometricEnabled = isEnabled;
-        _savedEmail = savedEmail;
         _biometricTypeName = typeName;
       });
 
