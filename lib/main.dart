@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'config/supabase_config.dart';
+import 'services/database_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar Supabase
+  await SupabaseConfig.initialize();
+  
   runApp(const MyApp());
 }
 
@@ -55,16 +62,62 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  int _registrosEnDB = 0;
+  bool _cargando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarRegistrosDB();
+  }
 
   void _incrementCounter() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
       _counter++;
     });
+  }
+
+  // Cargar registros existentes en la base de datos
+  Future<void> _cargarRegistrosDB() async {
+    setState(() => _cargando = true);
+    
+    try {
+      final registros = await DatabaseService.obtenerRegistrosPrueba();
+      setState(() {
+        _registrosEnDB = registros.length;
+        _cargando = false;
+      });
+    } catch (error) {
+      print('Error al cargar registros: $error');
+      setState(() => _cargando = false);
+    }
+  }
+
+  // Insertar nuevo registro en Supabase
+  Future<void> _insertarEnSupabase() async {
+    setState(() => _cargando = true);
+    
+    try {
+      final resultado = await DatabaseService.insertarRegistroPrueba();
+      if (resultado != null) {
+        await _cargarRegistrosDB(); // Recargar la lista
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Registro insertado en Supabase!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    
+    setState(() => _cargando = false);
   }
 
   @override
@@ -86,30 +139,74 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              // Sección del contador local
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Contador Local',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('Has presionado el botón:'),
+                      Text(
+                        '$_counter',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Sección de Supabase
+              Card(
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        '🗄️ Conexión Supabase',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      _cargando
+                          ? const CircularProgressIndicator()
+                          : Text(
+                              'Registros en DB: $_registrosEnDB',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _cargando ? null : _insertarEnSupabase,
+                        icon: const Icon(Icons.add_circle),
+                        label: const Text('Insertar en Supabase'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: _cargando ? null : _cargarRegistrosDB,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Actualizar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
