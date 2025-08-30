@@ -29,10 +29,15 @@ class _HomeScreenState extends State<HomeScreen> {
     
     try {
       final cuenta = await FinancialService.obtenerCuentaPrincipal();
-      setState(() {
-        _cuenta = cuenta;
-        _cargando = false;
-      });
+      if (cuenta != null) {
+        setState(() {
+          _cuenta = cuenta;
+          _cargando = false;
+        });
+      } else {
+        print('⚠️ No se encontró cuenta, usando datos de Supabase directamente');
+        setState(() => _cargando = false);
+      }
     } catch (error) {
       print('Error al cargar cuenta: $error');
       setState(() => _cargando = false);

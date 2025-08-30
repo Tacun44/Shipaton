@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'config/supabase_config.dart';
 import 'services/database_service.dart';
-import 'screens/home_screen.dart';
+import 'widgets/auth_wrapper.dart';
 import 'constants/app_colors.dart';
 
 void main() async {
@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const HomeScreen(),
+      home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
   }

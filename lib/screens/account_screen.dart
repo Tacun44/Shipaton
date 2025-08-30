@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/cuenta_model.dart';
+import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
+import '../widgets/auth_wrapper.dart';
 
 class AccountScreen extends StatelessWidget {
   final CuentaModel? cuenta;
   
-  const AccountScreen({super.key, this.cuenta});
+  const AccountScreen({super.key, required this.cuenta});
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +99,11 @@ class AccountScreen extends StatelessWidget {
             _buildOptionCard(Icons.credit_card, 'Métodos de pago', 'Tarjetas y cuentas'),
             _buildOptionCard(Icons.notifications, 'Notificaciones', 'Configurar alertas'),
             _buildOptionCard(Icons.help, 'Soporte', 'Contactar ayuda'),
+            
+            const SizedBox(height: 30),
+            
+            // Botón de cerrar sesión
+            _buildLogoutButton(context),
           ],
         ),
       ),
@@ -154,6 +162,60 @@ class AccountScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: ElevatedButton.icon(
+        onPressed: () => _handleLogout(context),
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text('Cerrar Sesión'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.error,
+          foregroundColor: AppColors.pureWhite,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cerrar Sesión'),
+          content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: AppColors.pureWhite,
+              ),
+              child: const Text('Cerrar Sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await AuthService.logout();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        (route) => false,
+      );
+    }
   }
 
   String _formatDate(DateTime? date) {

@@ -167,8 +167,11 @@ class BiometricService {
         throw Exception('Credenciales no encontradas. Inicia sesión normalmente.');
       }
 
-      // Iniciar sesión con Supabase
-      await AuthService.signIn(email: email, password: password);
+      // Iniciar sesión con AuthService
+      final result = await AuthService.login(email, password);
+      if (!result.success) {
+        throw Exception(result.message);
+      }
       return true;
     } catch (e) {
       debugPrint('Error en login biométrico: $e');
