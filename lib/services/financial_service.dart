@@ -6,24 +6,39 @@ import '../models/cuenta_model.dart';
 class FinancialService {
   static final SupabaseClient _client = SupabaseConfig.client;
 
-  // Obtener cuenta principal del usuario
+  // Obtener cuenta principal del usuario autenticado
   static Future<CuentaModel?> obtenerCuentaPrincipal() async {
     try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ No hay usuario autenticado');
+        return null;
+      }
+
+      debugPrint('🔍 Buscando cuenta para usuario: ${user.email}');
+
       final response = await _client
           .from('cuentas')
           .select()
-          .limit(1)
-          .single();
-      
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (response == null) {
+        debugPrint('⚠️ No se encontró cuenta para el usuario');
+        return null;
+      }
+
+      debugPrint('✅ Cuenta encontrada: ${response['nombre_usuario']}');
       return CuentaModel.fromJson(response);
     } catch (error) {
-      print('❌ Error al obtener cuenta: $error');
+      debugPrint('❌ Error al obtener cuenta: $error');
       return null;
     }
   }
 
   // Obtener movimientos recientes del usuario autenticado
-  static Future<List<MovimientoModel>> obtenerMovimientosRecientes({int limit = 10}) async {
+  static Future<List<MovimientoModel>> obtenerMovimientosRecientes(
+      {int limit = 10}) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) {
@@ -45,14 +60,14 @@ class FinancialService {
 
       final cuentaId = cuentaResponse['id'];
       debugPrint('🔍 Obteniendo movimientos para cuenta: $cuentaId');
-      
+
       final response = await _client
           .from('movimientos')
           .select()
           .eq('cuenta_id', cuentaId)
           .order('fecha', ascending: false)
           .limit(limit);
-      
+
       debugPrint('✅ Se encontraron ${response.length} movimientos');
       return response.map((json) => MovimientoModel.fromJson(json)).toList();
     } catch (error) {
@@ -83,7 +98,7 @@ class FinancialService {
 
       // Actualizar saldo de la cuenta
       await _actualizarSaldoCuenta(cuenta.id, monto, tipo);
-      
+
       return true;
     } catch (error) {
       print('❌ Error al agregar movimiento: $error');
@@ -92,13 +107,14 @@ class FinancialService {
   }
 
   // Actualizar saldo de cuenta
-  static Future<void> _actualizarSaldoCuenta(String cuentaId, double monto, TipoMovimiento tipo) async {
+  static Future<void> _actualizarSaldoCuenta(
+      String cuentaId, double monto, TipoMovimiento tipo) async {
     try {
       final cuenta = await obtenerCuentaPrincipal();
       if (cuenta == null) return;
 
       double nuevoSaldo = cuenta.saldoPrincipal;
-      
+
       switch (tipo) {
         case TipoMovimiento.ingreso:
         case TipoMovimiento.transferencia:
@@ -110,14 +126,10 @@ class FinancialService {
           break;
       }
 
-      await _client
-          .from('cuentas')
-          .update({
-            'saldo_principal': nuevoSaldo,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', cuentaId);
-          
+      await _client.from('cuentas').update({
+        'saldo_principal': nuevoSaldo,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', cuentaId);
     } catch (error) {
       print('❌ Error al actualizar saldo: $error');
     }

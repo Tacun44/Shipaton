@@ -492,10 +492,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Email: admin@gmail.com',
+                        'Email: jhonjairoravelomora@gmail.com',
                         style: TextStyle(
                           color: AppColors.secondaryText,
                           fontFamily: 'monospace',
+                          fontSize: 12,
                         ),
                       ),
                       Text(
