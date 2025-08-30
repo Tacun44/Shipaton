@@ -80,10 +80,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   return Transform.scale(
                     scale: value,
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 120,
+                      height: 120,
                       decoration: BoxDecoration(
-                        gradient: AppColors.accentGradient,
                         borderRadius: BorderRadius.circular(25),
                         boxShadow: [
                           BoxShadow(
@@ -93,10 +92,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: AppColors.pureWhite,
-                        size: 50,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(25),
+                        child: Image.asset(
+                          'assets/mueve_logo.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   );

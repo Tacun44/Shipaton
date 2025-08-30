@@ -4,7 +4,6 @@ import '../../services/biometric_service.dart';
 import '../../constants/app_colors.dart';
 import '../../screens/home_screen.dart';
 import 'register_screen.dart';
-import 'biometric_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +12,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,16 +25,50 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isBiometricEnabled = false;
   String _biometricTypeName = 'Biometría';
 
+  // Controladores de animación para el logo
+  late AnimationController _logoAnimationController;
+  late Animation<double> _logoScaleAnimation;
+  late Animation<double> _logoOpacityAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initAnimations();
     _initBiometric();
+  }
+
+  void _initAnimations() {
+    // Animación del logo
+    _logoAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _logoScaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoAnimationController,
+      curve: Curves.elasticOut,
+    ));
+
+    _logoOpacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+
+    // Iniciar animación
+    _logoAnimationController.forward();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _logoAnimationController.dispose();
     super.dispose();
   }
 
@@ -51,12 +85,81 @@ class _LoginScreenState extends State<LoginScreen> {
         _biometricTypeName = typeName;
       });
 
+      debugPrint(
+          '🔐 Biometría - Disponible: $isAvailable, Habilitada: $isEnabled, Tipo: $typeName');
+
       // Si hay email guardado, pre-llenarlo
       if (savedEmail != null) {
         _emailController.text = savedEmail;
       }
     } catch (e) {
-      debugPrint('Error inicializando biometría: $e');
+      debugPrint('❌ Error inicializando biometría: $e');
+      // Asumir que está disponible para mostrar la opción
+      setState(() {
+        _isBiometricAvailable = true;
+        _isBiometricEnabled = false;
+        _biometricTypeName = 'Huella Digital';
+      });
+    }
+  }
+
+  Future<void> _setupBiometric() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa tu email y contraseña primero'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      // Configurar biometría directamente
+      final success = await BiometricService.setupBiometricAuth(
+        email: email,
+        password: password,
+      );
+
+      if (success && mounted) {
+        await _initBiometric();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$_biometricTypeName habilitada correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo configurar la biometría'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -163,38 +266,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _checkAndShowBiometricSetup(
-      String email, String password) async {
-    try {
-      // Solo mostrar si la biometría está disponible pero no configurada
-      final isAvailable = await BiometricService.isBiometricAvailable();
-      final isEnabled = await BiometricService.isBiometricEnabled();
-
-      if (isAvailable && !isEnabled && mounted) {
-        // Esperar un poco para que se complete la navegación del AuthWrapper
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (mounted) {
-          final result = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (context) => BiometricSetupScreen(
-                email: email,
-                password: password,
-              ),
-            ),
-          );
-
-          if (result == true) {
-            // Biometría configurada, actualizar estado
-            await _initBiometric();
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error verificando configuración biométrica: $e');
-    }
-  }
-
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -244,25 +315,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 60),
 
                 // Logo animado de Mueve
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.accentGradient,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accentOrange.withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                AnimatedBuilder(
+                  animation: _logoAnimationController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _logoScaleAnimation.value,
+                      child: Opacity(
+                        opacity: _logoOpacityAnimation.value,
+                        child: Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentOrange.withOpacity(0.3),
+                                blurRadius: 25,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(30),
+                            child: Image.asset(
+                              'assets/mueve_logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    color: AppColors.pureWhite,
-                    size: 50,
-                  ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -404,9 +487,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                // Botón de autenticación biométrica (si está disponible)
+                const SizedBox(height: 16),
+
+                // Botón para habilitar acceso biométrico
+                if (_isBiometricAvailable && !_isBiometricEnabled) ...[
+                  SizedBox(
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _setupBiometric,
+                      icon: Icon(_getBiometricIcon()),
+                      label: Text('Habilitar $_biometricTypeName'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: AppColors.purple),
+                        foregroundColor: AppColors.purple,
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Botón de autenticación biométrica (si está habilitada)
                 if (_isBiometricAvailable && _isBiometricEnabled) ...[
-                  const SizedBox(height: 16),
                   SizedBox(
                     height: 50,
                     child: OutlinedButton.icon(
@@ -418,6 +521,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         side: const BorderSide(color: AppColors.skyBlue),
+                        foregroundColor: AppColors.skyBlue,
                       ),
                     ),
                   ),
@@ -470,45 +574,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 24),
-
-                // Credenciales de prueba
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.accentOrange.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        '🔐 Credenciales de prueba:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryText,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Email: jhonjairoravelomora@gmail.com',
-                        style: TextStyle(
-                          color: AppColors.secondaryText,
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        'Contraseña: 123456',
-                        style: TextStyle(
-                          color: AppColors.secondaryText,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
