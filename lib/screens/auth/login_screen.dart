@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
-import '../../constants/mueve_colors.dart';
+import '../../constants/app_colors.dart';
+import '../../screens/home_screen.dart';
 import 'register_screen.dart';
 import 'biometric_setup_screen.dart';
 
@@ -12,7 +13,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -23,71 +24,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
   String _biometricTypeName = 'Biometría';
-  
-  // Controladores de animación
-  late AnimationController _logoAnimationController;
-  late AnimationController _formAnimationController;
-  late Animation<double> _logoScaleAnimation;
-  late Animation<double> _logoOpacityAnimation;
-  late Animation<Offset> _formSlideAnimation;
 
   @override
   void initState() {
     super.initState();
     _initBiometric();
-    _initAnimations();
-  }
-  
-  void _initAnimations() {
-    // Animación del logo
-    _logoAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    
-    _logoScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    
-    _logoOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoAnimationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-    ));
-    
-    // Animación del formulario
-    _formAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _formSlideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _formAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
-    
-    // Iniciar animaciones
-    _logoAnimationController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _formAnimationController.forward();
-    });
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _logoAnimationController.dispose();
-    _formAnimationController.dispose();
     super.dispose();
   }
 
@@ -126,6 +73,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           SnackBar(
             content: Text('¡Bienvenido de vuelta con $_biometricTypeName!'),
             backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navegar al HomeScreen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
           ),
         );
       }
@@ -171,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.message),
-              backgroundColor: AppColors.success,
+              backgroundColor: Colors.green,
             ),
           );
 
@@ -186,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.message),
-              backgroundColor: AppColors.error,
+              backgroundColor: Colors.red,
             ),
           );
         }
@@ -196,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error de conexión: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -278,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MueveColors.lightGray,
+      backgroundColor: AppColors.lightGray,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -290,69 +244,56 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 const SizedBox(height: 60),
 
                 // Logo animado de Mueve
-                AnimatedBuilder(
-                  animation: _logoAnimationController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScaleAnimation.value,
-                      child: Opacity(
-                        opacity: _logoOpacityAnimation.value,
-                        child: Container(
-                          width: 160,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: MueveColors.skyBlue.withOpacity(0.3),
-                                blurRadius: 25,
-                                offset: const Offset(0, 15),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: Image.asset(
-                              'assets/mueve_logo.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.accentGradient,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accentOrange.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    );
-                  },
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppColors.pureWhite,
+                    size: 50,
+                  ),
                 ),
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Mueve',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: MueveColors.primaryText,
-                    letterSpacing: 1.2,
+                    color: AppColors.primaryText,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Tu dinero en movimiento',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: MueveColors.secondaryText,
-                    fontWeight: FontWeight.w400,
+                    color: AppColors.secondaryText,
                   ),
                 ),
 
                 const SizedBox(height: 48),
+
                 // Campo de email
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    prefixIcon:
-                        Icon(Icons.email_rounded, color: AppColors.skyBlue),
+                    prefixIcon: const Icon(Icons.email_rounded,
+                        color: AppColors.skyBlue),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -382,8 +323,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon:
-                        Icon(Icons.lock_rounded, color: AppColors.skyBlue),
+                    prefixIcon: const Icon(Icons.lock_rounded,
+                        color: AppColors.skyBlue),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -424,9 +365,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _resetPassword,
-                    child: Text(
+                    child: const Text(
                       '¿Olvidaste tu contraseña?',
-                      style: TextStyle(color: Theme.of(context).primaryColor),
+                      style: TextStyle(color: AppColors.skyBlue),
                     ),
                   ),
                 ),
@@ -439,8 +380,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _signIn,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: MueveColors.skyBlue,
-                      foregroundColor: MueveColors.pureWhite,
+                      backgroundColor: AppColors.skyBlue,
+                      foregroundColor: AppColors.pureWhite,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -452,7 +393,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: MueveColors.pureWhite,
+                              color: AppColors.pureWhite,
                             ),
                           )
                         : const Text(
@@ -476,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: BorderSide(color: Theme.of(context).primaryColor),
+                        side: const BorderSide(color: AppColors.skyBlue),
                       ),
                     ),
                   ),
@@ -515,23 +456,54 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           MaterialPageRoute(
                             builder: (context) => const RegisterScreen(),
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              'Regístrate',
-                              style: TextStyle(
-                                color: MueveColors.skyBlue,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                        );
+                      },
+                      child: const Text(
+                        'Regístrate',
+                        style: TextStyle(
+                          color: AppColors.skyBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Credenciales de prueba
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accentOrange.withOpacity(0.3),
+                    ),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        '🔐 Credenciales de prueba:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Email: admin@gmail.com',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      Text(
+                        'Contraseña: 123456',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ),

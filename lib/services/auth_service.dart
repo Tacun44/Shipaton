@@ -54,7 +54,7 @@ class AuthService {
 
       return AuthResult(
         success: false,
-        message: 'Credenciales incorrectas. Usa: admin@gmail.com/123456',
+        message: 'Credenciales incorrectas. Usa: admin@gmail.com / 123456',
       );
     } catch (error) {
       debugPrint('❌ Error en login: $error');
