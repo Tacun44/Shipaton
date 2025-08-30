@@ -19,13 +19,24 @@ class AuthService {
       // Verificar sesión de Supabase primero
       final session = _supabase.auth.currentSession;
       if (session != null) {
-        debugPrint('✅ Sesión activa en Supabase');
+        debugPrint('✅ Sesión activa en Supabase para: ${session.user.email}');
         return true;
       }
 
       // Fallback a storage local
       final isLoggedIn = await _storage.read(key: _keyIsLoggedIn);
-      return isLoggedIn == 'true';
+      final userId = await _storage.read(key: _keyUserId);
+      
+      debugPrint('🔍 Storage local - isLoggedIn: $isLoggedIn, userId: $userId');
+      
+      // Solo considerar autenticado si ambos valores existen
+      if (isLoggedIn == 'true' && userId != null && userId.isNotEmpty) {
+        debugPrint('✅ Usuario autenticado localmente: $userId');
+        return true;
+      }
+      
+      debugPrint('❌ No hay sesión activa');
+      return false;
     } catch (error) {
       debugPrint('❌ Error al verificar autenticación: $error');
       return false;
@@ -171,6 +182,27 @@ class AuthService {
       debugPrint('✅ Storage local limpiado');
     } catch (error) {
       debugPrint('❌ Error al cerrar sesión: $error');
+    }
+  }
+
+  // Limpiar completamente el estado de autenticación (para debugging)
+  static Future<void> clearAuthState() async {
+    try {
+      debugPrint('🧹 Limpiando completamente el estado de autenticación...');
+      
+      // Cerrar sesión en Supabase
+      try {
+        await _supabase.auth.signOut();
+      } catch (e) {
+        debugPrint('⚠️ Error cerrando sesión Supabase: $e');
+      }
+      
+      // Limpiar todo el storage
+      await _storage.deleteAll();
+      
+      debugPrint('✅ Estado de autenticación completamente limpiado');
+    } catch (error) {
+      debugPrint('❌ Error limpiando estado: $error');
     }
   }
 

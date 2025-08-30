@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'config/supabase_config.dart';
 import 'services/database_service.dart';
 import 'services/revenuecat_service.dart';
+import 'services/auth_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'constants/mueve_colors.dart';
 
@@ -13,6 +14,10 @@ void main() async {
   
   // Inicializar RevenueCat
   await RevenueCatService.initRC();
+  
+  // TEMPORAL: Limpiar estado de autenticación en desarrollo
+  // Descomenta la siguiente línea si necesitas resetear el login
+  // await AuthService.clearAuthState();
   
   runApp(const MyApp());
 }

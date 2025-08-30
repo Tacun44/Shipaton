@@ -1,7 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permiso de Internet (requerido para RevenueCat) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
     <!-- Permisos para autenticación biométrica -->
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    
+    <!-- Permiso para pagos in-app con RevenueCat -->
+    <uses-permission android:name="com.android.vending.BILLING" />
     
     <application
         android:label="flutter_application_1"
@@ -10,7 +16,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="standard"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
