@@ -115,7 +115,7 @@ class _FloatingActionMenuState extends State<FloatingActionMenu>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.account_balance_wallet_rounded,
+                            Icons.add_card_rounded,
                             color: MueveColors.pureWhite,
                             size: 26,
                           ),
