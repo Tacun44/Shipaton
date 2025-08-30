@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
+import '../../constants/mueve_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,7 +10,7 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -18,6 +19,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  
+  // Controladores de animación
+  late AnimationController _logoAnimationController;
+  late AnimationController _formAnimationController;
+  late Animation<double> _logoScaleAnimation;
+  late Animation<double> _logoOpacityAnimation;
+  late Animation<Offset> _formSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+  
+  void _initAnimations() {
+    // Animación del logo
+    _logoAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _logoScaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoAnimationController,
+      curve: Curves.elasticOut,
+    ));
+    
+    _logoOpacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+    
+    // Animación del formulario
+    _formAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _formSlideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _formAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    // Iniciar animaciones
+    _logoAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _formAnimationController.forward();
+    });
+  }
 
   @override
   void dispose() {
@@ -25,6 +83,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _logoAnimationController.dispose();
+    _formAnimationController.dispose();
     super.dispose();
   }
 
@@ -104,33 +164,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const SizedBox(height: 20),
                 
-                // Logo o título
-                Icon(
-                  Icons.person_add_outlined,
-                  size: 80,
-                  color: Theme.of(context).primaryColor,
+                // Logo animado de Mueve
+                AnimatedBuilder(
+                  animation: _logoAnimationController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _logoScaleAnimation.value,
+                      child: Opacity(
+                        opacity: _logoOpacityAnimation.value,
+                        child: Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: MueveColors.brightOrange.withOpacity(0.3),
+                                blurRadius: 25,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(30),
+                            child: Image.asset(
+                              'assets/mueve_logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Únete a Shipaton',
+                  'Únete a mueve',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                    color: MueveColors.primaryText,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Crea tu cuenta para comenzar',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[600],
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: MueveColors.secondaryText,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 
                 const SizedBox(height: 40),
                 
-                // Campo de nombre completo
+                // Formulario animado
+                SlideTransition(
+                  position: _formSlideAnimation,
+                  child: Column(
+                    children: [
+                      // Campo de nombre completo
                 TextFormField(
                   controller: _fullNameController,
                   decoration: InputDecoration(
@@ -285,12 +381,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Text(
                         'Inicia Sesión',
                         style: TextStyle(
-                          color: Theme.of(context).primaryColor,
+                          color: MueveColors.skyBlue,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
+                ),
+                    ],
+                  ),
                 ),
               ],
             ),
