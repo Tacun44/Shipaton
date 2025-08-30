@@ -1,68 +1,106 @@
-# Flutter Application 1
+# 🚢 Shipaton - Flutter + Supabase + Biometría
 
-Una aplicación Flutter multiplataforma desarrollada como proyecto inicial.
+Una aplicación Flutter moderna con autenticación biométrica y backend Supabase.
 
-## 📱 Características
+## ✨ Características
 
-- ✅ Aplicación Flutter multiplataforma
-- ✅ Soporte para Web, Windows, Android, iOS, macOS y Linux
-- ✅ Interfaz de usuario moderna con Material Design
-- ✅ Hot Reload para desarrollo rápido
+- 🔐 **Autenticación completa**: Login, registro y gestión de usuarios
+- 👆 **Biometría**: Huella dactilar y Face ID para acceso rápido
+- 🛡️ **Seguridad**: Row Level Security (RLS) en Supabase
+- 📱 **Multiplataforma**: Android, iOS, Web, Windows
+- 🎨 **UI Moderna**: Material Design 3
 
-## 🚀 Cómo ejecutar
+## 🚀 Generar APK con GitHub Actions
 
-### Prerrequisitos
-- Flutter SDK 3.35.2 o superior
-- Dart 3.9.0 o superior
-
-### Ejecutar la aplicación
-
-**En el navegador web:**
+### Paso 1: Subir a GitHub
 ```bash
-flutter run -d edge
+git init
+git add .
+git commit -m "🎉 Inicial: App con autenticación biométrica"
+git branch -M main
+git remote add origin https://github.com/tu-usuario/shipaton.git
+git push -u origin main
 ```
 
-**En Windows (aplicación de escritorio):**
-```bash
-flutter run -d windows
-```
+### Paso 2: Generar APK
+1. Ve a tu repositorio en GitHub
+2. Clic en **Actions** → **📱 Build Android APK**
+3. Clic en **Run workflow** → Selecciona **debug** → **Run workflow**
+4. Espera 3-5 minutos
+5. Descarga el APK desde **Artifacts**
 
-**Instalar dependencias:**
+### Paso 3: Instalar en Android
+1. Transfiere el APK a tu teléfono
+2. Habilita **Fuentes desconocidas** en Configuración
+3. Instala el APK
+4. ¡Prueba la huella dactilar!
+
+## 🛠️ Desarrollo Local
+
+### Requisitos
+- Flutter SDK 3.9+
+- Dart 3.0+
+- Android Studio (para APK local)
+
+### Comandos
 ```bash
+# Instalar dependencias
 flutter pub get
+
+# Ejecutar en web
+flutter run -d edge
+
+# Generar APK (requiere Android SDK)
+flutter build apk --debug
 ```
 
-## 🛠️ Tecnologías utilizadas
+## 🔧 Configuración Supabase
 
-- **Flutter**: Framework de desarrollo multiplataforma
-- **Dart**: Lenguaje de programación
-- **Material Design**: Sistema de diseño de Google
+La app está configurada con:
+- **URL**: `https://tycabutsaykxvuhfctpg.supabase.co`
+- **Tablas**: `profiles` con RLS habilitado
+- **Auth**: Email/contraseña + biometría
 
-## 📂 Estructura del proyecto
+## 📱 Funcionalidades Biométricas
 
-```
-lib/
-  └── main.dart          # Punto de entrada de la aplicación
-android/                 # Configuración para Android
-ios/                     # Configuración para iOS
-web/                     # Configuración para Web
-windows/                 # Configuración para Windows
-macos/                   # Configuración para macOS
-linux/                   # Configuración para Linux
-```
+- ✅ **Detección automática** de huella/Face ID
+- ✅ **Configuración opcional** después del primer login
+- ✅ **Almacenamiento seguro** de credenciales
+- ✅ **Fallback** a PIN/patrón
+- ✅ **Soporte multiplataforma**
 
-## 🎯 Próximos pasos
+## 🧪 Testing
 
-- [ ] Personalizar la interfaz de usuario
-- [ ] Agregar nuevas funcionalidades
-- [ ] Implementar navegación entre pantallas
-- [ ] Agregar persistencia de datos
-
-## 👨‍💻 Desarrollo
-
-Este proyecto fue creado con:
 ```bash
-flutter create flutter_application_1
+# Tests unitarios
+flutter test
+
+# Análisis de código
+flutter analyze
 ```
 
-Para más información sobre Flutter, visita la [documentación oficial](https://docs.flutter.dev/).
+## 📦 Build Commands
+
+```bash
+# Debug APK (para pruebas)
+flutter build apk --debug
+
+# Release APK (para distribución)
+flutter build apk --release
+
+# Bundle AAB (para Play Store)
+flutter build appbundle --release
+```
+
+## 🔐 Credenciales de Prueba
+
+- **Email**: whither82@gmail.com
+- **Contraseña**: [tu contraseña]
+- **Usuario**: Emmanuel
+
+## 🎯 Flujo de Autenticación
+
+1. **Primera vez**: Login con email/contraseña
+2. **Configuración**: Se ofrece configurar biometría
+3. **Siguientes veces**: Login con huella/Face ID
+4. **Seguridad**: Credenciales cifradas localmente

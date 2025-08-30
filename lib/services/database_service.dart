@@ -13,10 +13,10 @@ class DatabaseService {
           .select()
           .single();
       
-      print('✅ Registro insertado: $response');
+      debugPrint('✅ Registro insertado: $response');
       return response;
     } catch (error) {
-      print('❌ Error al insertar: $error');
+      debugPrint('❌ Error al insertar: $error');
       return null;
     }
   }
@@ -29,10 +29,10 @@ class DatabaseService {
           .select()
           .order('id', ascending: true);
       
-      print('✅ Registros obtenidos: ${response.length}');
+      debugPrint('✅ Registros obtenidos: ${response.length}');
       return response;
     } catch (error) {
-      print('❌ Error al obtener registros: $error');
+      debugPrint('❌ Error al obtener registros: $error');
       return [];
     }
   }
@@ -47,7 +47,7 @@ class DatabaseService {
       
       return response.count;
     } catch (error) {
-      print('❌ Error al contar registros: $error');
+      debugPrint('❌ Error al contar registros: $error');
       return 0;
     }
   }
