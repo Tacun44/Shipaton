@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
-import '../../constants/mueve_colors.dart';
+import '../../constants/app_colors.dart';
+import '../../screens/home_screen.dart';
 import 'register_screen.dart';
 import 'biometric_setup_screen.dart';
 
@@ -13,82 +13,28 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  
+
   // Variables para biometría
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
   String _biometricTypeName = 'Biometría';
-  
-  // Controladores de animación
-  late AnimationController _logoAnimationController;
-  late AnimationController _formAnimationController;
-  late Animation<double> _logoScaleAnimation;
-  late Animation<double> _logoOpacityAnimation;
-  late Animation<Offset> _formSlideAnimation;
 
   @override
   void initState() {
     super.initState();
     _initBiometric();
-    _initAnimations();
-  }
-  
-  void _initAnimations() {
-    // Animación del logo
-    _logoAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    
-    _logoScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    
-    _logoOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoAnimationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-    ));
-    
-    // Animación del formulario
-    _formAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _formSlideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _formAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
-    
-    // Iniciar animaciones
-    _logoAnimationController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _formAnimationController.forward();
-    });
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _logoAnimationController.dispose();
-    _formAnimationController.dispose();
     super.dispose();
   }
 
@@ -121,12 +67,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     try {
       final success = await BiometricService.signInWithBiometric();
-      
+
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Bienvenido de vuelta con $_biometricTypeName!'),
             backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navegar al HomeScreen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
           ),
         );
       }
@@ -158,35 +111,45 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
-      
-      await AuthService.signIn(email: email, password: password);
-      
-      if (mounted) {
-        // Mostrar mensaje de bienvenida
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Bienvenido!'),
-            backgroundColor: Colors.green,
-          ),
-        );
 
-        // Verificar si debe mostrar configuración biométrica
-        await _checkAndShowBiometricSetup(email, password);
-      }
-    } on AuthException catch (e) {
+      debugPrint('🔐 Iniciando login desde LoginScreen: $email');
+
+      // Usar el método login que retorna AuthResult
+      final result = await AuthService.login(email, password);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (result.success) {
+          // Login exitoso - navegar directamente al HomeScreen
+          debugPrint('✅ Login exitoso - navegando a HomeScreen');
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Navegar directamente al HomeScreen
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(),
+            ),
+          );
+        } else {
+          // Login fallido
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error inesperado: $e'),
+            content: Text('Error de conexión: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -200,16 +163,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     }
   }
 
-  Future<void> _checkAndShowBiometricSetup(String email, String password) async {
+  Future<void> _checkAndShowBiometricSetup(
+      String email, String password) async {
     try {
       // Solo mostrar si la biometría está disponible pero no configurada
       final isAvailable = await BiometricService.isBiometricAvailable();
       final isEnabled = await BiometricService.isBiometricEnabled();
-      
+
       if (isAvailable && !isEnabled && mounted) {
         // Esperar un poco para que se complete la navegación del AuthWrapper
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           final result = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
@@ -219,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               ),
             ),
           );
-          
+
           if (result == true) {
             // Biometría configurada, actualizar estado
             await _initBiometric();
@@ -247,7 +211,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Se ha enviado un email para restablecer tu contraseña'),
+            content:
+                Text('Se ha enviado un email para restablecer tu contraseña'),
             backgroundColor: Colors.blue,
           ),
         );
@@ -267,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MueveColors.lightGray,
+      backgroundColor: AppColors.lightGray,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -277,109 +242,95 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                
+
                 // Logo animado de Mueve
-                AnimatedBuilder(
-                  animation: _logoAnimationController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScaleAnimation.value,
-                      child: Opacity(
-                        opacity: _logoOpacityAnimation.value,
-                        child: Container(
-                          width: 160,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: MueveColors.skyBlue.withOpacity(0.3),
-                                blurRadius: 25,
-                                offset: const Offset(0, 15),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: Image.asset(
-                              'assets/mueve_logo.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.accentGradient,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accentOrange.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    );
-                  },
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppColors.pureWhite,
+                    size: 50,
+                  ),
                 ),
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Mueve',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: MueveColors.primaryText,
-                    letterSpacing: 1.2,
+                    color: AppColors.primaryText,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Tu dinero en movimiento',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: MueveColors.secondaryText,
-                    fontWeight: FontWeight.w400,
+                    color: AppColors.secondaryText,
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
-                // Formulario animado
-                SlideTransition(
-                  position: _formSlideAnimation,
-                  child: Column(
-                    children: [
-                
+
                 // Campo de email
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_rounded, color: MueveColors.skyBlue),
+                    prefixIcon: const Icon(Icons.email_rounded,
+                        color: AppColors.skyBlue),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: MueveColors.skyBlue, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.skyBlue, width: 2),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Por favor ingresa tu email';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
                       return 'Por favor ingresa un email válido';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Campo de contraseña
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock_rounded, color: MueveColors.skyBlue),
+                    prefixIcon: const Icon(Icons.lock_rounded,
+                        color: AppColors.skyBlue),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                        color: MueveColors.lightText,
+                        _obscurePassword
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        color: AppColors.lightText,
                       ),
                       onPressed: () {
                         setState(() {
@@ -392,7 +343,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: MueveColors.skyBlue, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.skyBlue, width: 2),
                     ),
                   ),
                   validator: (value) {
@@ -405,31 +357,31 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Enlace para restablecer contraseña
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _resetPassword,
-                    child: Text(
+                    child: const Text(
                       '¿Olvidaste tu contraseña?',
-                      style: TextStyle(color: Theme.of(context).primaryColor),
+                      style: TextStyle(color: AppColors.skyBlue),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Botón de iniciar sesión
                 SizedBox(
                   height: 50,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _signIn,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: MueveColors.skyBlue,
-                      foregroundColor: MueveColors.pureWhite,
+                      backgroundColor: AppColors.skyBlue,
+                      foregroundColor: AppColors.pureWhite,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -441,16 +393,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: MueveColors.pureWhite,
+                              color: AppColors.pureWhite,
                             ),
                           )
                         : const Text(
                             'Iniciar Sesión',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),
-                
+
                 // Botón de autenticación biométrica (si está disponible)
                 if (_isBiometricAvailable && _isBiometricEnabled) ...[
                   const SizedBox(height: 16),
@@ -464,14 +417,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: BorderSide(color: Theme.of(context).primaryColor),
+                        side: const BorderSide(color: AppColors.skyBlue),
                       ),
                     ),
                   ),
                 ],
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Divider
                 Row(
                   children: [
@@ -486,34 +439,71 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     Expanded(child: Divider(color: Colors.grey[300])),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
-                      // Enlace para registrarse
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '¿No tienes cuenta? ',
-                            style: TextStyle(color: MueveColors.secondaryText),
+
+                // Enlace para registrarse
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '¿No tienes cuenta? ',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              'Regístrate',
-                              style: TextStyle(
-                                color: MueveColors.skyBlue,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                        );
+                      },
+                      child: const Text(
+                        'Regístrate',
+                        style: TextStyle(
+                          color: AppColors.skyBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Credenciales de prueba
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accentOrange.withOpacity(0.3),
+                    ),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        '🔐 Credenciales de prueba:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Email: admin@gmail.com',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      Text(
+                        'Contraseña: 123456',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ),

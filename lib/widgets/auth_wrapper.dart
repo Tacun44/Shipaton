@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
@@ -23,11 +24,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuthStatus() async {
     try {
-      // Verificación más rápida
-      await Future.delayed(const Duration(milliseconds: 800));
-      
+      // Verificación rápida
+      await Future.delayed(const Duration(milliseconds: 300));
+
       final isLoggedIn = await AuthService.isLoggedIn();
-      
+      debugPrint('🔍 Estado de autenticación: $isLoggedIn');
+
       if (mounted) {
         setState(() {
           _isLoggedIn = isLoggedIn;
@@ -35,7 +37,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         });
       }
     } catch (error) {
-      print('Error verificando autenticación: $error');
+      debugPrint('❌ Error verificando autenticación: $error');
       if (mounted) {
         setState(() {
           _isLoggedIn = false;
@@ -43,6 +45,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         });
       }
     }
+  }
+
+  // Método para refrescar el estado desde LoginScreen
+  void refreshAuthStatus() {
+    _checkAuthStatus();
   }
 
   @override
@@ -95,9 +102,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Nombre de la app
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 800),
@@ -117,9 +124,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Subtítulo
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 1200),
@@ -138,9 +145,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 50),
-              
+
               // Indicador de carga
               const CircularProgressIndicator(
                 color: AppColors.accentOrange,
