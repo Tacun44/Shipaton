@@ -3,7 +3,6 @@ import 'config/supabase_config.dart';
 import 'services/database_service.dart';
 import 'screens/home_screen.dart';
 import 'constants/app_colors.dart';
-import 'widgets/auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
