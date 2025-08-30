@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../constants/app_colors.dart';
+import '../../screens/home_screen.dart';
 import 'register_screen.dart';
 import 'biometric_setup_screen.dart';
 
@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  
+
   // Variables para biometría
   bool _isBiometricAvailable = false;
   bool _isBiometricEnabled = false;
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final success = await BiometricService.signInWithBiometric();
-      
+
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -104,36 +104,46 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
-      
-      await AuthService.signIn(email: email, password: password);
-      
-      if (mounted) {
-        // Mostrar mensaje de bienvenida
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Bienvenido!'),
-            backgroundColor: Colors.green,
-          ),
-        );
 
-        // Verificar si debe mostrar configuración biométrica
-        await _checkAndShowBiometricSetup(email, password);
-      }
-    } on AuthException catch (e) {
+      debugPrint('🔐 Iniciando login desde LoginScreen: $email');
+
+      // Usar el método login que retorna AuthResult
+      final result = await AuthService.login(email, password);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (result.success) {
+          // Login exitoso - navegar directamente al HomeScreen
+          debugPrint('✅ Login exitoso - navegando a HomeScreen');
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: AppColors.success,
+            ),
+          );
+
+          // Navegar directamente al HomeScreen
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(),
+            ),
+          );
+        } else {
+          // Login fallido
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error inesperado: $e'),
-            backgroundColor: Colors.red,
+            content: Text('Error de conexión: $e'),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -146,16 +156,17 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _checkAndShowBiometricSetup(String email, String password) async {
+  Future<void> _checkAndShowBiometricSetup(
+      String email, String password) async {
     try {
       // Solo mostrar si la biometría está disponible pero no configurada
       final isAvailable = await BiometricService.isBiometricAvailable();
       final isEnabled = await BiometricService.isBiometricEnabled();
-      
+
       if (isAvailable && !isEnabled && mounted) {
         // Esperar un poco para que se complete la navegación del AuthWrapper
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           final result = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
@@ -165,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           );
-          
+
           if (result == true) {
             // Biometría configurada, actualizar estado
             await _initBiometric();
@@ -193,7 +204,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Se ha enviado un email para restablecer tu contraseña'),
+            content:
+                Text('Se ha enviado un email para restablecer tu contraseña'),
             backgroundColor: Colors.blue,
           ),
         );
@@ -223,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                
+
                 // Logo animado de Mueve
                 Container(
                   width: 100,
@@ -264,47 +276,53 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: AppColors.secondaryText,
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Campo de email
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_rounded, color: AppColors.skyBlue),
+                    prefixIcon:
+                        Icon(Icons.email_rounded, color: AppColors.skyBlue),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.skyBlue, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.skyBlue, width: 2),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Por favor ingresa tu email';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
                       return 'Por favor ingresa un email válido';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Campo de contraseña
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock_rounded, color: AppColors.skyBlue),
+                    prefixIcon:
+                        Icon(Icons.lock_rounded, color: AppColors.skyBlue),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                        _obscurePassword
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
                         color: AppColors.lightText,
                       ),
                       onPressed: () {
@@ -318,7 +336,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.skyBlue, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.skyBlue, width: 2),
                     ),
                   ),
                   validator: (value) {
@@ -331,9 +350,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Enlace para restablecer contraseña
                 Align(
                   alignment: Alignment.centerRight,
@@ -345,9 +364,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Botón de iniciar sesión
                 SizedBox(
                   height: 50,
@@ -372,11 +391,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           )
                         : const Text(
                             'Iniciar Sesión',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),
-                
+
                 // Botón de autenticación biométrica (si está disponible)
                 if (_isBiometricAvailable && _isBiometricEnabled) ...[
                   const SizedBox(height: 16),
@@ -395,9 +415,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Divider
                 Row(
                   children: [
@@ -412,9 +432,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(child: Divider(color: Colors.grey[300])),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Enlace para registrarse
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

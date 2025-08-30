@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/cuenta_model.dart';
@@ -21,18 +22,41 @@ class FinancialService {
     }
   }
 
-  // Obtener movimientos recientes
+  // Obtener movimientos recientes del usuario autenticado
   static Future<List<MovimientoModel>> obtenerMovimientosRecientes({int limit = 10}) async {
     try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ No hay usuario autenticado para obtener movimientos');
+        return [];
+      }
+
+      // Primero obtener la cuenta del usuario
+      final cuentaResponse = await _client
+          .from('cuentas')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (cuentaResponse == null) {
+        debugPrint('⚠️ No se encontró cuenta para obtener movimientos');
+        return [];
+      }
+
+      final cuentaId = cuentaResponse['id'];
+      debugPrint('🔍 Obteniendo movimientos para cuenta: $cuentaId');
+      
       final response = await _client
           .from('movimientos')
           .select()
+          .eq('cuenta_id', cuentaId)
           .order('fecha', ascending: false)
           .limit(limit);
       
+      debugPrint('✅ Se encontraron ${response.length} movimientos');
       return response.map((json) => MovimientoModel.fromJson(json)).toList();
     } catch (error) {
-      print('❌ Error al obtener movimientos: $error');
+      debugPrint('❌ Error al obtener movimientos: $error');
       return [];
     }
   }

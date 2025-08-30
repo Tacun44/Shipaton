@@ -6,10 +6,16 @@ import 'constants/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Inicializar Supabase
-  await SupabaseConfig.initialize();
-  
+
+  // Inicializar Supabase con manejo de errores
+  try {
+    await SupabaseConfig.initialize();
+    print('🚀 Supabase inicializado - App iniciando');
+  } catch (error) {
+    print('⚠️ Error al inicializar Supabase: $error');
+    print('📱 Continuando con modo offline...');
+  }
+
   runApp(const MyApp());
 }
 
@@ -37,5 +43,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-
