@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/mueve_colors.dart';
 import '../services/revenuecat_service.dart';
+import '../screens/paywall_screen.dart';
 
 class FloatingActionMenu extends StatefulWidget {
   final VoidCallback onMiCuentaTap;
@@ -50,18 +51,57 @@ class _FloatingActionMenuState extends State<FloatingActionMenu>
     
     try {
       await RevenueCatService.showTopUpPaywall();
-    } catch (e) {
+      
+      // Si llegamos aquí, RevenueCat funcionó correctamente
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: MueveColors.error,
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '✅ Paywall de RevenueCat completado',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            duration: const Duration(seconds: 3),
           ),
         );
+      }
+    } catch (e) {
+      if (mounted) {
+        // Verificar si es la excepción especial para paywall simulado
+        if (e is PaywallSimuladoException) {
+          // Mostrar paywall simulado visual
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PaywallScreen(),
+              fullscreenDialog: true,
+            ),
+          );
+        } else {
+          // Error real de RevenueCat
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: MueveColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {

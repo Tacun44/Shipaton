@@ -225,6 +225,12 @@ class AuthService {
     }
   }
 
+  // Validar formato de email
+  static bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(email);
+  }
+
   // Método signUp para registro con Supabase
   static Future<void> signUp({
     required String email,
@@ -232,42 +238,100 @@ class AuthService {
     required String fullName,
   }) async {
     try {
-      debugPrint('📝 Registrando usuario en Supabase: $email');
+      debugPrint('🚀 INICIANDO REGISTRO');
+      debugPrint('📧 Email: $email');
+      debugPrint('🔒 Password length: ${password.length}');
+      debugPrint('👤 Full name: $fullName');
+      
+      // Validar email antes de enviar a Supabase
+      if (!_isValidEmail(email)) {
+        debugPrint('❌ Email inválido: $email');
+        throw Exception('El formato del email no es válido. Ejemplo: usuario@gmail.com');
+      }
+      debugPrint('✅ Email válido');
+
+      // Validar contraseña
+      if (password.length < 6) {
+        debugPrint('❌ Contraseña muy corta: ${password.length} caracteres');
+        throw Exception('La contraseña debe tener al menos 6 caracteres');
+      }
+      debugPrint('✅ Contraseña válida');
+
+      // Validar nombre
+      if (fullName.trim().isEmpty) {
+        debugPrint('❌ Nombre vacío');
+        throw Exception('El nombre completo es requerido');
+      }
+      debugPrint('✅ Nombre válido');
+
+      debugPrint('📝 Enviando registro a Supabase: $email');
 
       // Registrar en Supabase Auth
+      debugPrint('🔄 Llamando a Supabase Auth...');
       final response = await _supabase.auth.signUp(
-        email: email,
+        email: email.trim().toLowerCase(),
         password: password,
-        data: {'full_name': fullName},
+        data: {'full_name': fullName.trim()},
       );
 
+      debugPrint('📨 Respuesta de Supabase recibida');
+      debugPrint('👤 Usuario creado: ${response.user != null}');
+      debugPrint('📧 Email confirmado: ${response.user?.emailConfirmedAt != null}');
+
       if (response.user != null) {
-        debugPrint('✅ Usuario registrado en Supabase Auth: $fullName');
+        debugPrint('✅ Usuario registrado en Supabase Auth: ${response.user!.id}');
 
         // Crear perfil automáticamente
-        await _supabase.from('profiles').insert({
-          'id': response.user!.id,
-          'email': email,
-          'full_name': fullName,
-        });
+        debugPrint('🔄 Creando perfil...');
+        try {
+          await _supabase.from('profiles').insert({
+            'id': response.user!.id,
+            'email': email.trim().toLowerCase(),
+            'full_name': fullName.trim(),
+          });
+          debugPrint('✅ Perfil creado exitosamente');
+        } catch (profileError) {
+          debugPrint('⚠️ Error creando perfil: $profileError');
+        }
 
         // Crear cuenta inicial automáticamente
-        await _supabase.from('cuentas').insert({
-          'user_id': response.user!.id,
-          'nombre_usuario': fullName,
-          'saldo_principal': 0.00,
-          'saldo_ahorros': 0.00,
-          'limite_tarjeta': 5000.00,
-          'saldo_utilizado': 0.00,
-        });
+        debugPrint('🔄 Creando cuenta inicial...');
+        try {
+          await _supabase.from('cuentas').insert({
+            'user_id': response.user!.id,
+            'nombre_usuario': fullName.trim(),
+            'saldo_principal': 0.00,
+            'saldo_ahorros': 0.00,
+            'limite_tarjeta': 5000.00,
+            'saldo_utilizado': 0.00,
+          });
+          debugPrint('✅ Cuenta inicial creada exitosamente');
+        } catch (cuentaError) {
+          debugPrint('⚠️ Error creando cuenta: $cuentaError');
+        }
 
-        debugPrint('✅ Perfil y cuenta creados para: $fullName');
+        debugPrint('🎉 REGISTRO COMPLETADO EXITOSAMENTE para: $fullName');
       } else {
-        throw Exception('No se pudo crear el usuario');
+        debugPrint('❌ No se recibió usuario en la respuesta');
+        throw Exception('No se pudo crear el usuario. Verifica tu conexión a internet.');
       }
     } catch (error) {
       debugPrint('❌ Error en registro: $error');
-      throw Exception('Error al crear cuenta: ${error.toString()}');
+      
+      // Mejorar mensajes de error específicos
+      String errorMessage = error.toString();
+      
+      if (errorMessage.contains('email_address_invalid')) {
+        throw Exception('El formato del email no es válido. Usa un email real como: usuario@gmail.com');
+      } else if (errorMessage.contains('User already registered')) {
+        throw Exception('Este email ya está registrado. Intenta iniciar sesión.');
+      } else if (errorMessage.contains('Password should be at least')) {
+        throw Exception('La contraseña debe tener al menos 6 caracteres');
+      } else if (errorMessage.contains('Invalid email')) {
+        throw Exception('Email inválido. Usa un formato como: usuario@gmail.com');
+      } else {
+        throw Exception('Error al crear cuenta: Verifica tu conexión e intenta con un email válido');
+      }
     }
   }
 

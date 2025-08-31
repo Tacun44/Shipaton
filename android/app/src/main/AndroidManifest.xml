@@ -9,10 +9,16 @@
     <!-- Permiso para pagos in-app con RevenueCat -->
     <uses-permission android:name="com.android.vending.BILLING" />
     
+    <!-- Permisos adicionales para RevenueCat -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
     <application
-        android:label="flutter_application_1"
+        android:label="Mueve"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="true"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
