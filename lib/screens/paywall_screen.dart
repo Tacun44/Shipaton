@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/mueve_colors.dart';
+import '../services/wallet_service.dart';
+import '../services/auth_service.dart';
 
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
@@ -312,78 +314,131 @@ class _PaywallScreenState extends State<PaywallScreen> {
       _isLoading = true;
     });
 
-    // Simular proceso de compra
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Obtener el usuario actual
+      final user = AuthService.getCurrentUser();
+      if (user == null) {
+        throw Exception('Usuario no autenticado');
+      }
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      final selectedPackage = _packages[_selectedPackage];
+      final cantidad = _extraerCantidad(selectedPackage['amount']);
 
-      // Mostrar éxito
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '¡Compra Simulada Exitosa!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Se han agregado ${_packages[_selectedPackage]['amount']} a tu cuenta (simulado)',
-                style: TextStyle(
-                  color: MueveColors.secondaryText,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Cerrar diálogo
-                    Navigator.pop(context); // Cerrar paywall
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: MueveColors.brightOrange,
-                    foregroundColor: MueveColors.pureWhite,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Continuar'),
-                ),
-              ),
-            ],
-          ),
-        ),
+      // Procesar la compra demo y agregar fondos reales al wallet
+      final exito = await WalletService.procesarCompraDemo(
+        userId: user.id,
+        packageId: selectedPackage['id'],
+        cantidad: cantidad,
       );
+
+      if (!exito) {
+        throw Exception('Error procesando la compra');
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        // Mostrar éxito
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '¡Recarga Exitosa!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Se han agregado ${selectedPackage['amount']} a tu wallet',
+                  style: TextStyle(
+                    color: MueveColors.secondaryText,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Revisa tu saldo en la pantalla principal',
+                  style: TextStyle(
+                    color: MueveColors.secondaryText,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Cerrar diálogo
+                      Navigator.pop(context); // Cerrar paywall
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MueveColors.brightOrange,
+                      foregroundColor: MueveColors.pureWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Ver mi saldo'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
+  }
+
+  // Función auxiliar para extraer la cantidad numérica del string
+  double _extraerCantidad(String amount) {
+    // Extraer números del string como "\$10.000"
+    final regex = RegExp(r'[\d,]+');
+    final match = regex.firstMatch(amount.replaceAll('.', ''));
+    if (match != null) {
+      return double.tryParse(match.group(0)?.replaceAll(',', '') ?? '0') ?? 0.0;
+    }
+    return 0.0;
   }
 }

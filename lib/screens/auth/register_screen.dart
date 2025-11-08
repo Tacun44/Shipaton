@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../constants/app_colors.dart';
+import '../../widgets/theme_toggle_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -155,6 +156,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         title: const Text('Crear Cuenta'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -181,7 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                             borderRadius: BorderRadius.circular(30),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.accentOrange.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                                 blurRadius: 25,
                                 offset: const Offset(0, 15),
                               ),
@@ -206,7 +211,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryText,
+                    color: Theme.of(context).colorScheme.onBackground,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -216,7 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.secondaryText,
+                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
                     fontWeight: FontWeight.w400,
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,10 +60,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shipaton'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        title: const Text('Mueve'),
+        // Usar el tema del AppBar
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _signOut,
@@ -79,10 +83,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // Saludo personalizado
                   Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    // Usar el tema de las cards
+                    elevation: Theme.of(context).cardTheme.elevation,
+                    shape: Theme.of(context).cardTheme.shape,
+                    color: Theme.of(context).cardTheme.color,
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Row(
@@ -115,13 +119,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   '¡Hola, ${_userProfile?['full_name'] ?? 'Usuario'}!',
                                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   AuthService.currentUser?.email ?? '',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                 ),
                               ],
@@ -136,16 +141,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   
                   // Título de bienvenida
                   Text(
-                    'Bienvenido a Shipaton',
+                    'Bienvenido a Mueve',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onBackground,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Tu aplicación está lista para usar',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
                     ),
                   ),
                   

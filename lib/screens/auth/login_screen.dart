@@ -3,6 +3,7 @@ import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../constants/app_colors.dart';
 import '../../screens/home_screen.dart';
+import '../../widgets/theme_toggle_button.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -303,7 +304,8 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
+      // Usar el color de fondo del tema actual
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -312,7 +314,14 @@ class _LoginScreenState extends State<LoginScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 60),
+                // Botón de tema en la esquina superior derecha
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const ThemeToggleButton(),
+                  ],
+                ),
+                const SizedBox(height: 40),
 
                 // Logo animado de Mueve
                 AnimatedBuilder(
@@ -329,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen>
                             borderRadius: BorderRadius.circular(30),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.accentOrange.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                                 blurRadius: 25,
                                 offset: const Offset(0, 15),
                               ),
@@ -348,22 +357,22 @@ class _LoginScreenState extends State<LoginScreen>
                   },
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Mueve',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryText,
+                    color: Theme.of(context).colorScheme.onBackground,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Tu dinero en movimiento',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.secondaryText,
+                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
                   ),
                 ),
 

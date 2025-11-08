@@ -1,453 +1,420 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:uuid/uuid.dart';
-import '../constants/app_colors.dart';
+import 'package:flutter/services.dart';
 import '../models/cuenta_model.dart';
+import '../services/wallet_service.dart';
+import '../services/auth_service.dart';
 
 class QRScreen extends StatefulWidget {
   final CuentaModel? cuenta;
-  
-  const QRScreen({super.key, required this.cuenta});
+
+  const QRScreen({super.key, this.cuenta});
 
   @override
   State<QRScreen> createState() => _QRScreenState();
 }
 
 class _QRScreenState extends State<QRScreen> with TickerProviderStateMixin {
-  late AnimationController _qrAnimationController;
-  late AnimationController _buttonAnimationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _rotationAnimation;
-  
-  String _qrData = '';
-  String _qrType = 'payment'; // payment, contact, transfer
-  final TextEditingController _montoController = TextEditingController();
-  final TextEditingController _conceptoController = TextEditingController();
+  late TabController _tabController;
+  String? _walletId;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    
-    _qrAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _buttonAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    
-    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _qrAnimationController, curve: Curves.elasticOut),
-    );
-    
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _buttonAnimationController, curve: Curves.easeInOut),
-    );
-    
-    _generarQRContacto(); // QR por defecto
+    _tabController = TabController(length: 2, vsync: this);
+    _cargarWalletId();
   }
 
   @override
   void dispose() {
-    _qrAnimationController.dispose();
-    _buttonAnimationController.dispose();
-    _montoController.dispose();
-    _conceptoController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  void _generarQRContacto() {
-    final uuid = const Uuid();
-    final qrId = uuid.v4().substring(0, 8);
-    
-    setState(() {
-      _qrType = 'contact';
-      _qrData = '''
-{
-  "type": "mueve_contact",
-  "user": "${widget.cuenta?.nombreUsuario ?? 'Usuario Mueve'}",
-  "account_id": "${widget.cuenta?.id ?? qrId}",
-  "app": "Mueve",
-  "timestamp": "${DateTime.now().toIso8601String()}"
-}''';
-    });
-    
-    _qrAnimationController.forward();
-  }
-
-  void _generarQRPago() {
-    if (_montoController.text.isEmpty) {
-      _mostrarError('Ingresa un monto válido');
-      return;
+  Future<void> _cargarWalletId() async {
+    try {
+      final user = AuthService.getCurrentUser();
+      if (user != null) {
+        final walletId = await WalletService.obtenerWalletId(user.id);
+        setState(() {
+          _walletId = walletId;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
     }
-    
-    final monto = double.tryParse(_montoController.text);
-    if (monto == null || monto <= 0) {
-      _mostrarError('El monto debe ser mayor a 0');
-      return;
-    }
-    
-    final uuid = const Uuid();
-    final qrId = uuid.v4().substring(0, 8);
-    
-    setState(() {
-      _qrType = 'payment';
-      _qrData = '''
-{
-  "type": "mueve_payment",
-  "amount": $monto,
-  "concept": "${_conceptoController.text.isEmpty ? 'Pago Mueve' : _conceptoController.text}",
-  "recipient": "${widget.cuenta?.nombreUsuario ?? 'Usuario Mueve'}",
-  "account_id": "${widget.cuenta?.id ?? qrId}",
-  "qr_id": "$qrId",
-  "timestamp": "${DateTime.now().toIso8601String()}"
-}''';
-    });
-    
-    _qrAnimationController.reset();
-    _qrAnimationController.forward();
-  }
-
-  void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
-        title: const Text('Generar QR', style: TextStyle(color: AppColors.pureWhite)),
-        backgroundColor: AppColors.darkNavy,
-        iconTheme: const IconThemeData(color: AppColors.pureWhite),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Selector de tipo de QR
-            _buildQRTypeSelector(),
-            
-            const SizedBox(height: 24),
-            
-            // Formulario dinámico
-            if (_qrType == 'payment') _buildPaymentForm(),
-            
-            const SizedBox(height: 24),
-            
-            // QR Code con animación
-            _buildAnimatedQR(),
-            
-            const SizedBox(height: 24),
-            
-            // Información del QR
-            _buildQRInfo(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQRTypeSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.pureWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildSelectorButton(
-              'Contacto',
-              Icons.person_rounded,
-              _qrType == 'contact',
-              () => _generarQRContacto(),
+        title: const Text('QR Mueve'),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Theme.of(context).appBarTheme.foregroundColor,
+          unselectedLabelColor: Theme.of(context).appBarTheme.foregroundColor?.withOpacity(0.7),
+          indicatorColor: Theme.of(context).colorScheme.primary,
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.qr_code),
+              text: 'Mi QR',
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _buildSelectorButton(
-              'Pago',
-              Icons.payment_rounded,
-              _qrType == 'payment',
-              () => setState(() => _qrType = 'payment'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelectorButton(String text, IconData icon, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          gradient: isSelected ? AppColors.blueGradient : null,
-          color: isSelected ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.pureWhite : AppColors.lightText,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: TextStyle(
-                color: isSelected ? AppColors.pureWhite : AppColors.lightText,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                fontSize: 14,
-              ),
+            Tab(
+              icon: Icon(Icons.qr_code_scanner),
+              text: 'Escanear',
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildPaymentForm() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.pureWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '💰 Configurar Pago',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryText,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Campo de monto
-          TextField(
-            controller: _montoController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Monto a cobrar',
-              prefixText: '\$ ',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.skyBlue, width: 2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Campo de concepto
-          TextField(
-            controller: _conceptoController,
-            decoration: InputDecoration(
-              labelText: 'Concepto (opcional)',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.skyBlue, width: 2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Botón generar
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _generarQRPago,
-              icon: const Icon(Icons.qr_code_rounded),
-              label: const Text('Generar QR de Pago'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.skyBlue,
-                foregroundColor: AppColors.pureWhite,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnimatedQR() {
-    if (_qrData.isEmpty) return const SizedBox.shrink();
-    
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.pureWhite,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.darkNavy.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
               children: [
-                Text(
-                  _qrType == 'contact' ? '👤 Mi Código QR' : '💳 QR de Pago',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryText,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // QR Code
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.pureWhite,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.lightGray, width: 2),
-                  ),
-                  child: QrImageView(
-                    data: _qrData,
-                    version: QrVersions.auto,
-                    size: 200,
-                    backgroundColor: AppColors.pureWhite,
-                    foregroundColor: AppColors.darkNavy,
-                    errorCorrectionLevel: QrErrorCorrectLevel.H,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                Text(
-                  _qrType == 'contact' 
-                      ? 'Comparte este código para que te agreguen'
-                      : 'Escanea para realizar el pago',
-                  style: TextStyle(
-                    color: AppColors.secondaryText,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                _buildMiQRTab(),
+                _buildEscanearTab(),
               ],
             ),
-          ),
-        );
-      },
     );
   }
 
-  Widget _buildQRInfo() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildMiQRTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
       child: Column(
         children: [
+          const SizedBox(height: 32),
+          
+          // Título
+          Text(
+            'Mi código QR',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onBackground,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Comparte este código para recibir pagos',
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 48),
+          
+          // QR Code Container
+          Card(
+            elevation: Theme.of(context).cardTheme.elevation,
+            shape: Theme.of(context).cardTheme.shape,
+            color: Theme.of(context).cardTheme.color,
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                children: [
+                  // QR Code simulado
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.qr_code,
+                          size: 80,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'QR Mueve',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.cuenta?.nombreUsuario ?? 'Usuario',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Wallet ID
+                  if (_walletId != null) ...[
+                    Text(
+                      'Wallet ID',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _walletId!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _copiarWalletId(),
+                            icon: const Icon(Icons.copy, size: 20),
+                            tooltip: 'Copiar Wallet ID',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Botones de acción
           Row(
             children: [
-              Icon(
-                Icons.info_outline_rounded,
-                color: AppColors.pureWhite,
-                size: 24,
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _compartirQR,
+                  icon: const Icon(Icons.share),
+                  label: const Text('Compartir'),
+                ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Información del QR',
-                style: TextStyle(
-                  color: AppColors.pureWhite,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _guardarQR,
+                  icon: const Icon(Icons.download),
+                  label: const Text('Guardar'),
                 ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 12),
-          
-          _buildInfoRow('📱 Funciona sin internet', 'Generado localmente'),
-          _buildInfoRow('🔒 Seguro', 'Datos encriptados'),
-          _buildInfoRow('⚡ Rápido', 'Escaneo instantáneo'),
-          if (_qrType == 'payment' && _montoController.text.isNotEmpty)
-            _buildInfoRow('💰 Monto', '\$${_montoController.text}'),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String title, String value) {
+  Widget _buildEscanearTab() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
         children: [
+          const SizedBox(height: 32),
+          
+          // Título
           Text(
-            title,
+            'Escanear QR',
             style: TextStyle(
-              color: AppColors.pureWhite.withOpacity(0.8),
-              fontSize: 14,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onBackground,
             ),
           ),
+          const SizedBox(height: 8),
           Text(
-            value,
+            'Escanea un código QR para realizar un pago',
             style: TextStyle(
-              color: AppColors.pureWhite,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 48),
+          
+          // Cámara simulada
+          Expanded(
+            child: Card(
+              elevation: Theme.of(context).cardTheme.elevation,
+              shape: Theme.of(context).cardTheme.shape,
+              color: Theme.of(context).cardTheme.color,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.qr_code_scanner,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Cámara QR',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Apunta la cámara hacia un código QR',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _abrirCamara,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Abrir Cámara'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Botón alternativo
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _ingresarManualmente,
+              icon: const Icon(Icons.edit),
+              label: const Text('Ingresar código manualmente'),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _copiarWalletId() {
+    if (_walletId != null) {
+      Clipboard.setData(ClipboardData(text: _walletId!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Wallet ID copiado al portapapeles'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _compartirQR() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Compartir QR - Próximamente'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _guardarQR() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Guardar QR - Próximamente'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _abrirCamara() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Cámara QR - Próximamente'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _ingresarManualmente() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ingresar código'),
+        content: TextField(
+          decoration: const InputDecoration(
+            labelText: 'Código QR o Wallet ID',
+            hintText: 'wallet_123456789...',
+          ),
+          onSubmitted: (value) {
+            Navigator.pop(context);
+            _procesarCodigo(value);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _procesarCodigo('demo_wallet_id');
+            },
+            child: const Text('Procesar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _procesarCodigo(String codigo) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Procesando código: ${codigo.substring(0, 10)}...'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

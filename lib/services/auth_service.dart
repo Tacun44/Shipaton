@@ -98,26 +98,29 @@ class AuthService {
             );
           } else {
             debugPrint('⚠️ No se encontró cuenta, creando una nueva...');
-            // Crear cuenta automáticamente si no existe
+            // Crear cuenta automáticamente si no existe con saldo demo y wallet
+            final walletId = 'wallet_${response.user!.id}_${DateTime.now().millisecondsSinceEpoch}';
+            
             await _supabase.from('cuentas').insert({
               'user_id': response.user!.id,
               'nombre_usuario': response.user!.email!.split('@')[0],
-              'saldo_principal': 0.00,
-              'saldo_ahorros': 0.00,
-              'limite_tarjeta': 5000.00,
-              'saldo_utilizado': 0.00,
+              'saldo_principal': 15750.50, // Saldo demo inicial
+              'saldo_ahorros': 8200.00,
+              'limite_tarjeta': 50000.00,
+              'saldo_utilizado': 2500.00,
+              'wallet_id': walletId, // Wallet único para cada cuenta
             });
 
             return AuthResult(
               success: true,
-              message: '¡Bienvenido! Cuenta creada.',
+              message: '¡Bienvenido! Cuenta creada con saldo demo.',
               user: CuentaModel(
                 id: response.user!.id,
                 nombreUsuario: response.user!.email!.split('@')[0],
-                saldoPrincipal: 0.0,
-                saldoAhorros: 0.0,
-                limiteTarjeta: 5000.0,
-                saldoUtilizado: 0.0,
+                saldoPrincipal: 15750.50, // Saldo demo inicial
+                saldoAhorros: 8200.00,
+                limiteTarjeta: 50000.00,
+                saldoUtilizado: 2500.00,
                 ultimosMovimientos: [],
                 ultimaActualizacion: DateTime.now(),
               ),
@@ -148,12 +151,43 @@ class AuthService {
             ),
           );
         }
+
+        // Verificar si hay usuario local registrado
+        final localEmail = await _storage.read(key: 'local_email');
+        final localPassword = await _storage.read(key: 'local_password');
+        final localUserId = await _storage.read(key: _keyUserId);
+        final localUserName = await _storage.read(key: _keyUserName);
+
+        if (localEmail != null && 
+            localPassword != null && 
+            email.toLowerCase() == localEmail.toLowerCase() && 
+            password == localPassword) {
+          
+          debugPrint('✅ Login exitoso con usuario local: $localEmail');
+          
+          await _storage.write(key: _keyIsLoggedIn, value: 'true');
+
+          return AuthResult(
+            success: true,
+            message: '¡Bienvenido ${localUserName ?? 'Usuario'}! (Modo Demo)',
+            user: CuentaModel(
+              id: localUserId ?? 'local_user',
+              nombreUsuario: localUserName ?? 'Usuario Demo',
+              saldoPrincipal: 15750.50,
+              saldoAhorros: 8200.00,
+              limiteTarjeta: 50000.00,
+              saldoUtilizado: 2500.00,
+              ultimosMovimientos: [],
+              ultimaActualizacion: DateTime.now(),
+            ),
+          );
+        }
       }
 
       return AuthResult(
         success: false,
         message:
-            'Credenciales incorrectas. Prueba: jhonjairoravelomora@gmail.com / 123456',
+            'Credenciales incorrectas. Registra una cuenta nueva o prueba: admin@gmail.com / 123456',
       );
     } catch (error) {
       debugPrint('❌ Error en login: $error');
@@ -225,10 +259,11 @@ class AuthService {
     }
   }
 
-  // Validar formato de email
+  // Validar formato de email (modo demo - súper permisivo)
   static bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    return emailRegex.hasMatch(email);
+    // Modo demo: acepta cualquier email que tenga @ (súper permisivo)
+    final emailTrimmed = email.trim();
+    return emailTrimmed.contains('@') && emailTrimmed.length > 3;
   }
 
   // Método signUp para registro con Supabase
@@ -243,12 +278,12 @@ class AuthService {
       debugPrint('🔒 Password length: ${password.length}');
       debugPrint('👤 Full name: $fullName');
       
-      // Validar email antes de enviar a Supabase
+      // Validar email antes de enviar a Supabase (modo demo súper permisivo)
       if (!_isValidEmail(email)) {
         debugPrint('❌ Email inválido: $email');
-        throw Exception('El formato del email no es válido. Ejemplo: usuario@gmail.com');
+        throw Exception('El email debe contener @ (ej: juan@demo)');
       }
-      debugPrint('✅ Email válido');
+      debugPrint('✅ Email válido (modo demo súper permisivo)');
 
       // Validar contraseña
       if (password.length < 6) {
@@ -268,18 +303,45 @@ class AuthService {
 
       // Registrar en Supabase Auth
       debugPrint('🔄 Llamando a Supabase Auth...');
-      final response = await _supabase.auth.signUp(
-        email: email.trim().toLowerCase(),
-        password: password,
-        data: {'full_name': fullName.trim()},
-      );
+      
+      AuthResponse? response;
+      bool isLocalFallback = false;
+      
+      try {
+        response = await _supabase.auth.signUp(
+          email: email.trim().toLowerCase(),
+          password: password,
+          data: {'full_name': fullName.trim()},
+        );
+      } catch (supabaseError) {
+        debugPrint('⚠️ Supabase rechazó el email, usando fallback local');
+        debugPrint('🔄 Error de Supabase: $supabaseError');
+        
+        // Crear usuario local para demo
+        isLocalFallback = true;
+        final localUserId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+        
+        // Guardar en storage local
+        await _storage.write(key: _keyIsLoggedIn, value: 'true');
+        await _storage.write(key: _keyUserId, value: localUserId);
+        await _storage.write(key: _keyUserName, value: fullName.trim());
+        await _storage.write(key: 'local_email', value: email.trim().toLowerCase());
+        await _storage.write(key: 'local_password', value: password);
+        
+        debugPrint('✅ Usuario local creado: $localUserId');
+      }
+
+      if (isLocalFallback) {
+        debugPrint('🎉 REGISTRO LOCAL COMPLETADO EXITOSAMENTE para: $fullName');
+        return; // Salir exitosamente
+      }
 
       debugPrint('📨 Respuesta de Supabase recibida');
-      debugPrint('👤 Usuario creado: ${response.user != null}');
-      debugPrint('📧 Email confirmado: ${response.user?.emailConfirmedAt != null}');
+      debugPrint('👤 Usuario creado: ${response?.user != null}');
+      debugPrint('📧 Email confirmado: ${response?.user?.emailConfirmedAt != null}');
 
-      if (response.user != null) {
-        debugPrint('✅ Usuario registrado en Supabase Auth: ${response.user!.id}');
+      if (response?.user != null) {
+        debugPrint('✅ Usuario registrado en Supabase Auth: ${response!.user!.id}');
 
         // Crear perfil automáticamente
         debugPrint('🔄 Creando perfil...');
@@ -322,15 +384,15 @@ class AuthService {
       String errorMessage = error.toString();
       
       if (errorMessage.contains('email_address_invalid')) {
-        throw Exception('El formato del email no es válido. Usa un email real como: usuario@gmail.com');
+        throw Exception('Formato de email inválido. Prueba con: juan@demo.com');
       } else if (errorMessage.contains('User already registered')) {
         throw Exception('Este email ya está registrado. Intenta iniciar sesión.');
       } else if (errorMessage.contains('Password should be at least')) {
         throw Exception('La contraseña debe tener al menos 6 caracteres');
       } else if (errorMessage.contains('Invalid email')) {
-        throw Exception('Email inválido. Usa un formato como: usuario@gmail.com');
+        throw Exception('Email inválido. Formato: algo@algo.algo (ej: test@demo.com)');
       } else {
-        throw Exception('Error al crear cuenta: Verifica tu conexión e intenta con un email válido');
+        throw Exception('Error al crear cuenta: Intenta con formato juan@demo.com');
       }
     }
   }
